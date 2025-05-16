@@ -21,7 +21,7 @@
 
 #include <std_msgs/msg/int32.h>
 /*user include*/
-// #include "mission.h"
+#include "mission.h"
 // #include "motion.h"
 #include "timers.h"
 #include "uros_init.h"
@@ -49,7 +49,7 @@ void StartDefaultTask(void *argument)
   xTimer = xTimerCreate("Timer", pdMS_TO_TICKS(100), pdTRUE, (void *)0, vTimerCallback);
   xTimerStart(xTimer, 0);
 
-  mission_initial_pose(); // initial pose
+  mission_initial_pose(NULL); // initial pose
 
   for(;;)
   {

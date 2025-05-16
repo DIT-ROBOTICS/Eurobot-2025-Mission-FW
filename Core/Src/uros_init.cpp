@@ -10,9 +10,12 @@
 
 rcl_publisher_t         mission_status_pub;
 std_msgs__msg__Int32    mission_status_msg;
+rcl_publisher_t         start_pub;
+std_msgs__msg__Bool     start_msg;
 rcl_subscription_t      mission_type_sub;
 std_msgs__msg__Int32    mission_type_msg;
 rcl_timer_t             status_pub_timer;
+rcl_timer_t             start_pub_timer;
 
 
 rclc_support_t support;
@@ -26,6 +29,7 @@ agent_status_t status = AGENT_WAITING;
 int32_t mission_type = 0;
 int32_t mission_type_prev = 0;
 int32_t mission_status = 1;
+bool start_flag = 0;
 int task_created = 0;
 
 extern UART_HandleTypeDef USARTx;
@@ -64,14 +68,20 @@ bool uros_create_entities(void)
     rcl_init_options_fini(&init_options);
     rclc_node_init_default(&node, NODE_NAME, "", &support);
     // Create executor
-    rclc_executor_init(&executor, &support.context, 2, &allocator);
+    rclc_executor_init(&executor, &support.context, 3, &allocator);
     // Initialize publisher
     rclc_publisher_init_default(
         &mission_status_pub,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
         "mission_status");
-    mission_status_msg.data = 0;
+        mission_status_msg.data = 0;
+    rclc_publisher_init_default(
+        &start_pub,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool),
+        "/robot/startup/plug");
+        start_msg.data = 0;
     // Initialize subscriber
     rclc_subscription_init_default(
         &mission_type_sub,
@@ -84,6 +94,8 @@ bool uros_create_entities(void)
     // Initialize timer
     rclc_timer_init_default(&status_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), status_pub_cb);
     rclc_executor_add_timer(&executor, &status_pub_timer);
+    rclc_timer_init_default(&start_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), start_pub_cb);
+    rclc_executor_add_timer(&executor, &start_pub_timer);
     return true;
 }
 
@@ -96,6 +108,7 @@ void uros_destroy_entities(void)
 
     // Destroy publisher
     rcl_publisher_fini(&mission_status_pub, &node);
+    rcl_publisher_fini(&start_pub, &node);
 
     // Destroy subscriber
     rcl_subscription_fini(&mission_type_sub, &node);
@@ -162,11 +175,35 @@ void status_pub_cb(rcl_timer_t * timer, int64_t last_call_time)
     rcl_publish(&mission_status_pub, &mission_status_msg, NULL);
 }
 
+void start_pub_cb(rcl_timer_t * timer, int64_t last_call_time)
+{
+    start_msg.data = start_flag;
+    rcl_publish(&start_pub, &start_msg, NULL);
+}
 // this function will create the task according to the mission type
 void mission_control(void)
 {
   switch(mission_type)
   {
+    case 1:
+      if(!task_created){
+          xTaskCreate(start_air_pump_1, "Start_Air_Pump_1", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
+    case 0:
+      if(!task_created){
+          start_flag = false;
+          xTaskCreate(robot_stop_0, "Robot_Stop_0", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
+    case 12:
+      if(!task_created){
+          xTaskCreate(front_grab_one_layer_12, "Front_Grab_One_Layer_12", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
     case 11:
       if(!task_created){
           xTaskCreate(front_grab_11, "Front_Grab_11", 512, NULL, osPriorityNormal, NULL);
@@ -176,6 +213,12 @@ void mission_control(void)
     case 10:
       if(!task_created){
           xTaskCreate(front_release_10, "Front_Release_10", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
+    case 25:
+      if(!task_created){
+          xTaskCreate(back_out_close_25, "Back_Out_Close_25", 512, NULL, osPriorityNormal, NULL);
           task_created = 1;
       }
       break;
@@ -206,6 +249,18 @@ void mission_control(void)
     case 20:
       if(!task_created){
           xTaskCreate(back_release_20, "Back_Release_20", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
+    case 35:
+      if(!task_created){
+          xTaskCreate(front_top_short_35, "Front_Top_Short_35", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
+    case 34:
+      if(!task_created){
+          xTaskCreate(front_bot_higher_34, "Front_Bot_Higher_34", 512, NULL, osPriorityNormal, NULL);
           task_created = 1;
       }
       break;
@@ -245,6 +300,36 @@ void mission_control(void)
           task_created = 1;
       }
       break;
+    // case 80:
+    //   if(!task_created){
+    //       xTaskCreate(side_shrink_in_80, "Side_Shrink_In_80", 512, NULL, osPriorityNormal, NULL);
+    //       task_created = 1;
+    //   }
+    //   break;
+    // case 81:
+    //   if(!task_created){
+    //       xTaskCreate(side_stretch_out_81, "Side_Stretch_Out_81", 512, NULL, osPriorityNormal, NULL);
+    //       task_created = 1;
+    //   }
+    //   break;
+    // case 82:
+    //   if(!task_created){
+    //       xTaskCreate(side_put_banner_82, "Side_Put_Banner_82", 512, NULL, osPriorityNormal, NULL);
+    //       task_created = 1;
+    //   }
+    //   break;
+    case 80:
+      if(!task_created){
+          xTaskCreate(front_arm_reset_80, "Front_Arm_Reset_80", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
+    case 81:
+      if(!task_created){
+          xTaskCreate(front_put_banner_81, "Front_Put_Banner_81", 512, NULL, osPriorityNormal, NULL);
+          task_created = 1;
+      }
+      break;
     case 90:
       if(!task_created){
           xTaskCreate(front_mag_valve_disable_90, "Front_Mag_Valve_Disable_90", 512, NULL, osPriorityNormal, NULL);
@@ -263,3 +348,10 @@ void mission_control(void)
 }
 
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == GPIO_PIN_10) // Check if the interrupt is from PC10
+    {
+        start_flag = true; // Set start_msg to true
+    }
+}

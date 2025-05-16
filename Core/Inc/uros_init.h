@@ -20,10 +20,12 @@
 #include <rmw_microxrcedds_c/config.h>
 #include <rmw_microros/rmw_microros.h>
 #include <std_msgs/msg/int32.h>
+#include <std_msgs/msg/bool.h>
 
 #include "config.h"
 #include "timers.h"
 #include "mission.h"
+#include "motion.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,8 +56,10 @@ void uros_agent_status_check(void);
 
 void mission_type_sub_cb(const void * msgin);
 void status_pub_cb(rcl_timer_t * timer, int64_t last_call_time);
+void start_pub_cb(rcl_timer_t * timer, int64_t last_call_time);
 void mission_control(void);
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 #ifdef __cplusplus
 }

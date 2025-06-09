@@ -30,7 +30,18 @@ int32_t mission_type = 0;
 int32_t mission_type_prev = 0;
 int32_t mission_status = 1;
 bool start_flag = 0;
+
+int ping_fail_count = 0;
+#define MAX_PING_FAIL_COUNT 5
+
+// task created flag
 int task_created = 0;
+int task_created_1 = 0;
+int task_created_2 = 0;
+int task_created_3 = 0;
+int task_created_7 = 0;
+int task_created_8 = 0;
+int task_created_9 = 0;
 
 extern UART_HandleTypeDef USARTx;
 
@@ -57,7 +68,7 @@ void uros_init(void)
     }
 }
 
-bool uros_create_entities(void)
+void uros_create_entities(void)
 {
     // Create node
     allocator = rcl_get_default_allocator();
@@ -96,7 +107,7 @@ bool uros_create_entities(void)
     rclc_executor_add_timer(&executor, &status_pub_timer);
     rclc_timer_init_default(&start_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), start_pub_cb);
     rclc_executor_add_timer(&executor, &start_pub_timer);
-    return true;
+    // return true;
 }
 
 void uros_destroy_entities(void)
@@ -105,6 +116,7 @@ void uros_destroy_entities(void)
     (void) rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
     // Destroy timer
     rcl_timer_fini(&status_pub_timer);
+    rcl_timer_fini(&start_pub_timer);
 
     // Destroy publisher
     rcl_publisher_fini(&mission_status_pub, &node);
@@ -126,27 +138,50 @@ void uros_agent_status_check(void)
     switch (status)
     {
         case AGENT_WAITING:
-            status = (rmw_uros_ping_agent(100, 1) == RMW_RET_OK) ? AGENT_AVAILABLE : AGENT_WAITING;
-            if(mission_type != mission_type_prev)
-            {
-                mission_type_prev = mission_type;
-                mission_control();
-            }
+            status = (rmw_uros_ping_agent(100, 10) == RMW_RET_OK) ? AGENT_AVAILABLE : AGENT_WAITING;
+            // if(mission_type != mission_type_prev)
+            // {
+            //     mission_type_prev = mission_type;
+            //     mission_control();
+            // }
             break;
         case AGENT_AVAILABLE:
-            if(rmw_uros_ping_agent(100, 1) != RMW_RET_OK)
+            if(rmw_uros_ping_agent(200, 5) != RMW_RET_OK)
             {
                 uros_destroy_entities();
                 status = AGENT_WAITING;
+                break;
             }
-            status = (uros_create_entities() == true) ? AGENT_CONNECTED : AGENT_WAITING;
-            
+            // status = (uros_create_entities() == true) ? AGENT_CONNECTED : AGENT_WAITING;
+            status = AGENT_CONNECTED; // Assume the agent is available and connected
+            uros_create_entities();
             break;
         case AGENT_CONNECTED:
-            status = (rmw_uros_ping_agent(100, 1) == RMW_RET_OK) ? AGENT_CONNECTED : AGENT_DISCONNECTED;
-            if(status == AGENT_CONNECTED){
+            if(rmw_uros_ping_agent(10, 5) == RMW_RET_OK){
                 rclc_executor_spin_some(&executor, 1000/FREQUENCY);
-                mission_status_msg.data = mission_status;
+                ping_fail_count = 0; // Reset ping fail count
+            } else {
+                ping_fail_count++;
+                if(ping_fail_count >= MAX_PING_FAIL_COUNT)
+                {
+                    status = AGENT_TRYING;
+                }
+            }
+            break;
+        case AGENT_TRYING:
+            if(rmw_uros_ping_agent(50, 10) == RMW_RET_OK)
+            {
+                status = AGENT_CONNECTED;
+                ping_fail_count = 0; // Reset ping fail count
+            }
+            else
+            {
+                ping_fail_count++;
+                if(ping_fail_count >= MAX_PING_FAIL_COUNT)
+                {
+                    status = AGENT_DISCONNECTED;
+                    ping_fail_count = 0;
+                }
             }
             break;
         case AGENT_DISCONNECTED:
@@ -187,7 +222,7 @@ void mission_control(void)
   {
     case 1:
       if(!task_created){
-          xTaskCreate(start_air_pump_1, "Start_Air_Pump_1", 512, NULL, osPriorityNormal, NULL);
+          xTaskCreate(robot_start_1, "Robot_Start_1", 512, NULL, osPriorityNormal, NULL);
           task_created = 1;
       }
       break;
@@ -198,148 +233,148 @@ void mission_control(void)
           task_created = 1;
       }
       break;
+    case 15:
+      if(!task_created_1){
+          xTaskCreate(front_side_support_close_15, "Front_Side_Support_Close_15", 512, NULL, osPriorityNormal, NULL);
+          task_created_1 = 1;
+      }
+      break;
+    case 14:
+      if(!task_created_1){
+          xTaskCreate(front_wood_push_close_14, "Front_Wood_Push_Close_14", 512, NULL, osPriorityNormal, NULL);
+          task_created_1 = 1;
+      }
+      break;
+    case 13:
+      if(!task_created_1){
+          xTaskCreate(front_wood_push_13, "Front_Wood_Push_13", 512, NULL, osPriorityNormal, NULL);
+          task_created_1 = 1;
+      }
+      break;
     case 12:
-      if(!task_created){
-          xTaskCreate(front_grab_one_layer_12, "Front_Grab_One_Layer_12", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+      if(!task_created_1){
+          xTaskCreate(front_side_support_12, "Front_Side_Support_12", 512, NULL, osPriorityNormal, NULL);
+          task_created_1 = 1;
       }
       break;
     case 11:
-      if(!task_created){
+      if(!task_created_1){
           xTaskCreate(front_grab_11, "Front_Grab_11", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_1 = 1;
       }
       break;
     case 10:
-      if(!task_created){
+      if(!task_created_1){
           xTaskCreate(front_release_10, "Front_Release_10", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_1 = 1;
       }
       break;
     case 25:
-      if(!task_created){
+      if(!task_created_2){
           xTaskCreate(back_out_close_25, "Back_Out_Close_25", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_2 = 1;
       }
       break;
     case 24:
-      if(!task_created){
+      if(!task_created_2){
           xTaskCreate(back_release_outer_24, "Back_Release_Outer_24", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_2 = 1;
       }
       break;
     case 23:
-      if(!task_created){
+      if(!task_created_2){
         xTaskCreate(back_small_arm_close_23, "Back_Small_Arm_Close_23", 512, NULL, osPriorityNormal, NULL);
-        task_created = 1;
+        task_created_2 = 1;
       }
       break;
     case 22:
-      if(!task_created){
+      if(!task_created_2){
           xTaskCreate(back_small_arm_open_22, "Back_Small_Arm_Open_22", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_2 = 1;
       }
       break;
     case 21:
-      if(!task_created){
+      if(!task_created_2){
           xTaskCreate(back_grab_21, "Back_Grab_21", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_2 = 1;
       }
       break;
     case 20:
-      if(!task_created){
+      if(!task_created_2){
           xTaskCreate(back_release_20, "Back_Release_20", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_2 = 1;
       }
       break;
     case 35:
-      if(!task_created){
+      if(!task_created_3){
           xTaskCreate(front_top_short_35, "Front_Top_Short_35", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_3 = 1;
       }
       break;
     case 34:
-      if(!task_created){
+      if(!task_created_3){
           xTaskCreate(front_bot_higher_34, "Front_Bot_Higher_34", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_3 = 1;
       }
       break;
     case 33:
-      if(!task_created){
+      if(!task_created_3){
           xTaskCreate(front_mid_lower_33, "Front_Mid_Lower_33", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_3 = 1;
       }
       break;
     case 32:
-      if(!task_created){
+      if(!task_created_3){
           xTaskCreate(front_top_32, "Front_Top_32", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_3 = 1;
       }
       break;
     case 31: 
-      if(!task_created){
+      if(!task_created_3){
           xTaskCreate(front_one_layer_31, "Front_One_Layer_31", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_3 = 1;
       }
       break;
     case 30:
-      if(!task_created){
+      if(!task_created_3){
           xTaskCreate(front_bottom_30, "Front_Bottom_30", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_3 = 1;
       }
       break;
     case 71:
-      if(!task_created){
+      if(!task_created_7){
           xTaskCreate(front_wood_takein_71, "Front_Wood_Takein_71", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_7 = 1;
       }
       break;
     case 70:
-      if(!task_created){
+      if(!task_created_7){
           xTaskCreate(front_wood_takeout_70, "Front_Wood_Takeout_70", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_7 = 1;
       }
       break;
-    // case 80:
-    //   if(!task_created){
-    //       xTaskCreate(side_shrink_in_80, "Side_Shrink_In_80", 512, NULL, osPriorityNormal, NULL);
-    //       task_created = 1;
-    //   }
-    //   break;
-    // case 81:
-    //   if(!task_created){
-    //       xTaskCreate(side_stretch_out_81, "Side_Stretch_Out_81", 512, NULL, osPriorityNormal, NULL);
-    //       task_created = 1;
-    //   }
-    //   break;
-    // case 82:
-    //   if(!task_created){
-    //       xTaskCreate(side_put_banner_82, "Side_Put_Banner_82", 512, NULL, osPriorityNormal, NULL);
-    //       task_created = 1;
-    //   }
-    //   break;
     case 80:
-      if(!task_created){
+      if(!task_created_8){
           xTaskCreate(front_arm_reset_80, "Front_Arm_Reset_80", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_8 = 1;
       }
       break;
     case 81:
-      if(!task_created){
+      if(!task_created_8){
           xTaskCreate(front_put_banner_81, "Front_Put_Banner_81", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_8 = 1;
       }
       break;
     case 90:
-      if(!task_created){
+      if(!task_created_9){
           xTaskCreate(front_mag_valve_disable_90, "Front_Mag_Valve_Disable_90", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_9 = 1;
       }
       break;
     case 91:
-      if(!task_created){
+      if(!task_created_9){
           xTaskCreate(back_mag_valve_disable_91, "Back_Mag_Valve_Disable_91", 512, NULL, osPriorityNormal, NULL);
-          task_created = 1;
+          task_created_9 = 1;
       }
       break;
     default:

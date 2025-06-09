@@ -46,11 +46,12 @@ typedef enum {
     AGENT_WAITING,
     AGENT_AVAILABLE,
     AGENT_CONNECTED,
+    AGENT_TRYING,
     AGENT_DISCONNECTED
 } agent_status_t;
 
 void uros_init(void);
-bool uros_create_entities(void);
+void uros_create_entities(void);
 void uros_destroy_entities(void);
 void uros_agent_status_check(void);
 

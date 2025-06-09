@@ -40,7 +40,7 @@ Servo BI_SMALL_LINEAR(&htim5, TIM_CHANNEL_1);
 Servo BO_GRAB_LINEAR(&htim2, TIM_CHANNEL_3);
 Servo BO_ROTATE(&htim2, TIM_CHANNEL_1);
 
-Servo S_LINEAR_S1(&htim4, TIM_CHANNEL_3);
+Servo S_FRONT_LINEAR_PUSH_WOOD(&htim4, TIM_CHANNEL_3);
 Servo S_FRONT_SIDE_SUPPORT(&htim4, TIM_CHANNEL_4);
 
 Servo Backup(&htim3, TIM_CHANNEL_4);
@@ -56,7 +56,7 @@ int F_Grab_Linear_angle = 360; // 夾木板 open 800 close 500
 int F_Grab_L2_angle = 300; // 托木板 >900 down
 int F_Grab_L1_angle() { return (1800-F_Grab_L2_angle+20); } // 托木板
 
-int BI_R_COL_angle = 430; // >430 open
+int BI_R_COL_angle = 450; // >430 open
 int BI_L_COL_angle() {return (1800-BI_R_COL_angle+10);}
 int BI_UP_DOMN_COL_angle = 1500;
 int BI_SMALL_LINEAR_angle = 400;
@@ -64,7 +64,7 @@ int BI_SMALL_LINEAR_angle = 400;
 int BO_GRAB_LINEAR_angle = 400;
 int BO_ROTATE_angle = 950; // <900 open
 
-int S_LINEAR_S1_angle = 360; // stretch and shrink
+int S_FRONT_LINEAR_PUSH_WOOD_angle = 900; // 960 out 900 in
 int S_FRONT_SIDE_SUPPORT_angle = 900; // lift up and down
 
 int Backup_angle = 320;
@@ -93,7 +93,7 @@ void motion_init(void){
     F_GRAB_LOWER_S2.init();
     BI_R_COL.init();
     BI_L_COL.init();
-    S_LINEAR_S1.init();
+    S_FRONT_LINEAR_PUSH_WOOD.init();
     S_FRONT_SIDE_SUPPORT.init();
     BI_UP_DOMN_COL.init();
     BI_SMALL_LINEAR.init();
@@ -107,13 +107,13 @@ void motion_initial_pose(void){
     F_Pushing_angle = 500;
     F_Lifting_UpDown_angle = 1170;
     F_Grab_Linear_angle = 500;
-    F_Grab_L2_angle = 300;
-    BI_R_COL_angle = 430;
+    F_Grab_L2_angle = 200;
+    BI_R_COL_angle = 230;
     BI_UP_DOMN_COL_angle = 1500;
     BI_SMALL_LINEAR_angle = 400;
     BO_GRAB_LINEAR_angle = 400;
     BO_ROTATE_angle = 950;
-    S_LINEAR_S1_angle = 360;
+    S_FRONT_LINEAR_PUSH_WOOD_angle = 860;
     S_FRONT_SIDE_SUPPORT_angle = 900;
     Backup_angle = 320;
     F_MAG_VAL = 0;
@@ -132,7 +132,7 @@ void servo_refresh_angle(void){
     F_GRAB_LOWER_S2.setAngle(F_Grab_L2_angle);
     BI_R_COL.setAngle(BI_R_COL_angle);
     BI_L_COL.setAngle(BI_L_COL_angle());
-    S_LINEAR_S1.setAngle(S_LINEAR_S1_angle);
+    S_FRONT_LINEAR_PUSH_WOOD.setAngle(S_FRONT_LINEAR_PUSH_WOOD_angle);
     S_FRONT_SIDE_SUPPORT.setAngle(S_FRONT_SIDE_SUPPORT_angle);
     BI_UP_DOMN_COL.setAngle(BI_UP_DOMN_COL_angle);
     BI_SMALL_LINEAR.setAngle(BI_SMALL_LINEAR_angle);
@@ -191,17 +191,20 @@ void back_in_release(void){
     BI_SMALL_LINEAR_angle = 400;
     B_MAG_VAL = 1;
 }
+void back_out_start_pos(void){
+    BI_R_COL_angle = 450;
+}
 void back_out_open(void){
     BI_R_COL_angle = 900;
     osDelay(100);
 }
 void back_out_close(void){
-    BI_R_COL_angle = 430;
+    BI_R_COL_angle = 450;
     osDelay(100);
 }
 void back_out_release(void){
-    if(BI_R_COL_angle != 430){
-        BI_R_COL_angle = 430;
+    if(BI_R_COL_angle != 450){
+        BI_R_COL_angle = 450;
         osDelay(100);
     }
     if(BI_UP_DOMN_COL_angle != 1500){
@@ -236,7 +239,7 @@ void back_small_arm_grab(void){
         osDelay(1000);
     }
     BO_GRAB_LINEAR_angle = 500;
-    osDelay(200);
+    // osDelay(200);
 }
 void back_small_arm_release(void){
     BO_GRAB_LINEAR_angle = 1200;
@@ -251,8 +254,8 @@ void front_grab(void){
     osDelay(400);
 }
 void front_grab_one_layer(void){
-    F_MAG_VAL = 0;
-    F_Grab_L2_angle = 555;
+    // F_MAG_VAL = 0;
+    // F_Grab_L2_angle = 555;
     S_FRONT_SIDE_SUPPORT_angle = 1650;
     osDelay(400);
 }
@@ -263,16 +266,16 @@ void front_release(void){ // release and close the magnet valve
 }
 void front_lift_to_top(void){
     F_Lift_Cascade_angle_prev = F_Lift_Cascade_angle;
-    if(F_Lift_Cascade_angle != 530){
-        while(abs(F_Lift_Cascade_angle-530) != 0){
-            if(abs(F_Lift_Cascade_angle-530) < 20){
-                F_Lift_Cascade_angle = 530;
+    if(F_Lift_Cascade_angle != 570){
+        while(abs(F_Lift_Cascade_angle-570) != 0){
+            if(abs(F_Lift_Cascade_angle-570) < 20){
+                F_Lift_Cascade_angle = 570;
             }else{
-                F_Lift_Cascade_angle += (530-F_Lift_Cascade_angle_prev)/100;
+                F_Lift_Cascade_angle += (570-F_Lift_Cascade_angle_prev)/100;
             }
             osDelay(5);
         }
-        osDelay(800);
+        // osDelay(200);
     }
 }
 void front_lift_to_middle(void){
@@ -300,7 +303,7 @@ void front_lift_to_middle_lower(void){
         }
         osDelay(40);
     }
-    osDelay(300);
+    // osDelay(300);
 }
 void front_lift_to_bottom_higher(void){
     Backup_angle = 0;
@@ -343,73 +346,57 @@ void front_wood_initial_pose(void){
     F_Lifting_UpDown_angle = 1170;
 }
 void front_wood_grab(void){
-    F_Pushing_angle = 1600;
+    F_Pushing_angle = 1650;
     F_Lifting_UpDown_angle = 1170;
-    F_Grab_Linear_angle = 1200;
-    osDelay(500);
+    F_Grab_Linear_angle = 1300;
+    osDelay(750);
     F_Lifting_UpDown_angle = 900;
-    osDelay(600);
+    osDelay(300);
     F_Grab_Linear_angle = 500;
     osDelay(700);
     F_Lifting_UpDown_angle = 1170;
-    osDelay(500);
-    F_Pushing_angle = 500;
     osDelay(300);
+    F_Pushing_angle = 500;
+    osDelay(100);
 }
 void front_wood_release(void){
-    F_Pushing_angle = 1600;
+    F_Pushing_angle = 1650;
     osDelay(500);
-    F_Lifting_UpDown_angle = 900;
-    osDelay(500);
-    F_Grab_Linear_angle = 1000;
-    osDelay(200);
+    F_Lifting_UpDown_angle = 800;
+    osDelay(100);
+    F_Grab_Linear_angle = 900;
+    osDelay(100);
     F_Lifting_UpDown_angle = 1170;
-    osDelay(300);
+    osDelay(200);
     F_Pushing_angle = 500;
     F_Grab_Linear_angle = 500;
-    osDelay(300);
+    osDelay(200);
+}
+void front_wood_push(void){
+    S_FRONT_LINEAR_PUSH_WOOD_angle = 910;
+}
+void front_wood_push_close(void){
+    S_FRONT_LINEAR_PUSH_WOOD_angle = 860;
+}
+
+void front_side_support(void){
+    S_FRONT_SIDE_SUPPORT_angle = 1650;
+    osDelay(100);
+}
+void front_side_support_close(void){
+    S_FRONT_SIDE_SUPPORT_angle = 900;
+    osDelay(100);
 }
 
 
 void front_banner_release(void){
     F_Grab_L2_angle = 650;
-    osDelay(300);
+    osDelay(1500);
 }
 void front_arm_reset(void){
     F_Grab_L2_angle = 1050;
     osDelay(200);
 }
-
-// void side_stretch_out(void){
-//     if(S_LINEAR_S2_angle != 360){
-//         S_LINEAR_S2_angle = 360;
-//         osDelay(500);
-//     }
-//     S_LINEAR_S1_angle = 1440;
-//     osDelay(4000);
-// }
-// void side_shrink_in(void){
-//     if(S_LINEAR_S2_angle != 360){
-//         S_LINEAR_S2_angle = 360;
-//         osDelay(500);
-//     }
-//     S_LINEAR_S1_angle = 360;
-//     osDelay(4000);
-// }
-// void side_outer_lift_down(void){
-//     if(S_LINEAR_S1_angle != 1440){
-//         S_LINEAR_S2_angle = 1440;
-//         osDelay(4000);
-//     }
-//     S_LINEAR_S2_angle = 950;
-//     osDelay(2000);
-// }
-// void side_outer_lift_up(void){
-//     S_LINEAR_S2_angle = 360;
-//     osDelay(2000);
-// }
-
-
 
 void air_pump_on(void){
     AIR_PUMP = 1;

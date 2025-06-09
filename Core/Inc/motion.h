@@ -21,6 +21,7 @@ void air_pump_refresh(void);
 
 void back_in_grab(void);
 void back_in_release(void);
+void back_out_start_pos(void);
 void back_out_open(void);
 void back_out_close(void);
 void back_out_release(void);
@@ -41,14 +42,15 @@ void front_lift_to_bottom(void);
 void front_wood_initial_pose(void);
 void front_wood_grab(void);
 void front_wood_release(void);
+void front_wood_push(void);
+void front_wood_push_close(void);
+void front_side_support(void);
+void front_side_support_close(void);
+
 
 void front_banner_release(void);
 void front_arm_reset(void);
 
-// void side_stretch_out(void);
-// void side_shrink_in(void);
-// void side_outer_lift_down(void);
-// void side_outer_lift_up(void);
 
 void air_pump_on(void);
 void air_pump_off(void);
@@ -57,7 +59,6 @@ void front_mag_valve_off(void);
 void back_mag_valve_off(void);
 
 void dick_initial_pose(void);
-// void side_initial_pose(void);
 
 
 

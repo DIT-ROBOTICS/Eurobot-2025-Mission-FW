@@ -149,7 +149,7 @@ void uros_agent_status_check(void) {
       break;
     case AGENT_CONNECTED:
       if(rmw_uros_ping_agent(20, 5) == RMW_RET_OK){
-          rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+          rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)); // mabe I fuck up beacause I put the timeout into (1000/FREQUENCY)=25ms wrongly, and maybe it caused the buffer occupying increase
           ping_fail_count = 0; // Reset ping fail count
       } else {
           ping_fail_count++;

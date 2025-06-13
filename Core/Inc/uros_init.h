@@ -62,6 +62,8 @@ void mission_control(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
+void memory_usage_check(void);
+
 #ifdef __cplusplus
 }
 #endif

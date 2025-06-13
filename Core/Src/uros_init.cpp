@@ -43,6 +43,13 @@ int task_created_7 = 0;
 int task_created_8 = 0;
 int task_created_9 = 0;
 
+// float heap_usage[100] = {0}; // Array to store heap usage percentages
+// int memory_usage_index = 0;
+int time_delay[100] = {0};
+int time_delay_index = 0;
+uint32_t current_time = 0; // Variable to store the current time
+uint64_t heap_remain = 0.0; // Variable to store heap usage percentage
+
 extern UART_HandleTypeDef USARTx;
 
 void uros_init(void) {
@@ -100,14 +107,14 @@ void uros_create_entities(void) {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "mission_type");
   mission_type_msg.data = 0;
-
+  
+  rclc_timer_init_default(&status_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), status_pub_cb); // Initialize status message timer
+  rclc_timer_init_default(&start_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), start_pub_cb); // Initialize start message timer
+  
   rclc_executor_init(&executor, &support.context, 3, &allocator); // Create executor
 
   rclc_executor_add_subscription(&executor, &mission_type_sub, &mission_type_msg, &mission_type_sub_cb, ON_NEW_DATA); // Add subscriber to executor
-
-  rclc_timer_init_default(&status_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), status_pub_cb); // Initialize timer
   rclc_executor_add_timer(&executor, &status_pub_timer); // Add timer to executor
-  rclc_timer_init_default(&start_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), start_pub_cb); // Initialize start message timer
   rclc_executor_add_timer(&executor, &start_pub_timer); // Add start message timer to executor
 }
 
@@ -134,6 +141,8 @@ void uros_destroy_entities(void) {
 }
 
 void uros_agent_status_check(void) {
+  memory_usage_check(); // Check memory usage
+
   switch (status) {
     case AGENT_WAITING:
       status = (rmw_uros_ping_agent(100, 10) == RMW_RET_OK) ? AGENT_AVAILABLE : AGENT_WAITING;
@@ -149,13 +158,13 @@ void uros_agent_status_check(void) {
       break;
     case AGENT_CONNECTED:
       if(rmw_uros_ping_agent(20, 5) == RMW_RET_OK){
-          rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)); // mabe I fuck up beacause I put the timeout into (1000/FREQUENCY)=25ms wrongly, and maybe it caused the buffer occupying increase
-          ping_fail_count = 0; // Reset ping fail count
+        rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+        ping_fail_count = 0; // Reset ping fail count
       } else {
-          ping_fail_count++;
-          if(ping_fail_count >= MAX_PING_FAIL_COUNT){
-              status = AGENT_TRYING;
-          }
+        ping_fail_count++;
+        if(ping_fail_count >= MAX_PING_FAIL_COUNT){
+            status = AGENT_TRYING;
+        }
       }
       break;
     case AGENT_TRYING:
@@ -205,158 +214,158 @@ void mission_control(void) {
   switch(mission_type) {
     case 1:
       if(!task_created){
-        xTaskCreate(robot_start_1, "Robot_Start_1", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(robot_start_1, "Robot_Start_1", 256, NULL, osPriorityNormal, NULL);
         task_created = 1;
       }
       break;
     case 0:
       if(!task_created){
         start_flag = false;
-        xTaskCreate(robot_stop_0, "Robot_Stop_0", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(robot_stop_0, "Robot_Stop_0", 256, NULL, osPriorityNormal, NULL);
         task_created = 1;
       }
       break;
     case 15:
       if(!task_created_1){
-        xTaskCreate(front_side_support_close_15, "Front_Side_Support_Close_15", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_side_support_close_15, "Front_Side_Support_Close_15", 256, NULL, osPriorityNormal, NULL);
         task_created_1 = 1;
       }
       break;
     case 14:
       if(!task_created_1){
-        xTaskCreate(front_wood_push_close_14, "Front_Wood_Push_Close_14", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_wood_push_close_14, "Front_Wood_Push_Close_14", 256, NULL, osPriorityNormal, NULL);
         task_created_1 = 1;
       }
       break;
     case 13:
       if(!task_created_1){
-        xTaskCreate(front_wood_push_13, "Front_Wood_Push_13", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_wood_push_13, "Front_Wood_Push_13", 256, NULL, osPriorityNormal, NULL);
         task_created_1 = 1;
       }
       break;
     case 12:
       if(!task_created_1){
-        xTaskCreate(front_side_support_12, "Front_Side_Support_12", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_side_support_12, "Front_Side_Support_12", 256, NULL, osPriorityNormal, NULL);
         task_created_1 = 1;
       }
       break;
     case 11:
       if(!task_created_1){
-        xTaskCreate(front_grab_11, "Front_Grab_11", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_grab_11, "Front_Grab_11", 256, NULL, osPriorityNormal, NULL);
         task_created_1 = 1;
       }
       break;
     case 10:
       if(!task_created_1){
-        xTaskCreate(front_release_10, "Front_Release_10", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_release_10, "Front_Release_10", 256, NULL, osPriorityNormal, NULL);
         task_created_1 = 1;
       }
       break;
     case 25:
       if(!task_created_2){
-        xTaskCreate(back_out_close_25, "Back_Out_Close_25", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_out_close_25, "Back_Out_Close_25", 256, NULL, osPriorityNormal, NULL);
         task_created_2 = 1;
       }
       break;
     case 24:
       if(!task_created_2){
-        xTaskCreate(back_release_outer_24, "Back_Release_Outer_24", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_release_outer_24, "Back_Release_Outer_24", 256, NULL, osPriorityNormal, NULL);
         task_created_2 = 1;
       }
       break;
     case 23:
       if(!task_created_2){
-        xTaskCreate(back_small_arm_close_23, "Back_Small_Arm_Close_23", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_small_arm_close_23, "Back_Small_Arm_Close_23", 256, NULL, osPriorityNormal, NULL);
         task_created_2 = 1;
       }
       break;
     case 22:
       if(!task_created_2){
-        xTaskCreate(back_small_arm_open_22, "Back_Small_Arm_Open_22", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_small_arm_open_22, "Back_Small_Arm_Open_22", 256, NULL, osPriorityNormal, NULL);
         task_created_2 = 1;
       }
       break;
     case 21:
       if(!task_created_2){
-        xTaskCreate(back_grab_21, "Back_Grab_21", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_grab_21, "Back_Grab_21", 256, NULL, osPriorityNormal, NULL);
         task_created_2 = 1;
       }
       break;
     case 20:
       if(!task_created_2){
-        xTaskCreate(back_release_20, "Back_Release_20", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_release_20, "Back_Release_20", 256, NULL, osPriorityNormal, NULL);
         task_created_2 = 1;
       }
       break;
     case 35:
       if(!task_created_3){
-        xTaskCreate(front_top_short_35, "Front_Top_Short_35", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_top_short_35, "Front_Top_Short_35", 256, NULL, osPriorityNormal, NULL);
         task_created_3 = 1;
       }
       break;
     case 34:
       if(!task_created_3){
-        xTaskCreate(front_bot_higher_34, "Front_Bot_Higher_34", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_bot_higher_34, "Front_Bot_Higher_34", 256, NULL, osPriorityNormal, NULL);
         task_created_3 = 1;
       }
       break;
     case 33:
       if(!task_created_3){
-        xTaskCreate(front_mid_lower_33, "Front_Mid_Lower_33", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_mid_lower_33, "Front_Mid_Lower_33", 256, NULL, osPriorityNormal, NULL);
         task_created_3 = 1;
       }
       break;
     case 32:
       if(!task_created_3){
-        xTaskCreate(front_top_32, "Front_Top_32", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_top_32, "Front_Top_32", 256, NULL, osPriorityNormal, NULL);
         task_created_3 = 1;
       }
       break;
     case 31: 
       if(!task_created_3){
-        xTaskCreate(front_one_layer_31, "Front_One_Layer_31", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_one_layer_31, "Front_One_Layer_31", 256, NULL, osPriorityNormal, NULL);
         task_created_3 = 1;
       }
       break;
     case 30:
       if(!task_created_3){
-        xTaskCreate(front_bottom_30, "Front_Bottom_30", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_bottom_30, "Front_Bottom_30", 256, NULL, osPriorityNormal, NULL);
         task_created_3 = 1;
       }
       break;
     case 71:
       if(!task_created_7){
-        xTaskCreate(front_wood_takein_71, "Front_Wood_Takein_71", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_wood_takein_71, "Front_Wood_Takein_71", 256, NULL, osPriorityNormal, NULL);
         task_created_7 = 1;
       }
       break;
     case 70:
       if(!task_created_7){
-        xTaskCreate(front_wood_takeout_70, "Front_Wood_Takeout_70", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_wood_takeout_70, "Front_Wood_Takeout_70", 256, NULL, osPriorityNormal, NULL);
         task_created_7 = 1;
       }
       break;
     case 80:
       if(!task_created_8){
-        xTaskCreate(front_arm_reset_80, "Front_Arm_Reset_80", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_arm_reset_80, "Front_Arm_Reset_80", 256, NULL, osPriorityNormal, NULL);
         task_created_8 = 1;
       }
       break;
     case 81:
       if(!task_created_8){
-        xTaskCreate(front_put_banner_81, "Front_Put_Banner_81", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_put_banner_81, "Front_Put_Banner_81", 256, NULL, osPriorityNormal, NULL);
         task_created_8 = 1;
       }
       break;
     case 90:
       if(!task_created_9){
-        xTaskCreate(front_mag_valve_disable_90, "Front_Mag_Valve_Disable_90", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(front_mag_valve_disable_90, "Front_Mag_Valve_Disable_90", 256, NULL, osPriorityNormal, NULL);
         task_created_9 = 1;
       }
       break;
     case 91:
       if(!task_created_9){
-        xTaskCreate(back_mag_valve_disable_91, "Back_Mag_Valve_Disable_91", 512, NULL, osPriorityNormal, NULL);
+        xTaskCreate(back_mag_valve_disable_91, "Back_Mag_Valve_Disable_91", 256, NULL, osPriorityNormal, NULL);
         task_created_9 = 1;
       }
       break;
@@ -369,5 +378,28 @@ void mission_control(void) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == GPIO_PIN_10){ // Check if the interrupt is from PC10
     start_flag = true; // Set start_msg to true
+  }
+}
+
+void memory_usage_check(void) {
+  static uint32_t last_check_time = 0;
+  current_time = HAL_GetTick();
+  if (current_time - last_check_time >= 1000) { // Check every second
+    if(time_delay_index < 99) {
+      time_delay[time_delay_index] = current_time - last_check_time; // Store the time delay
+      time_delay_index++;
+    } else {
+      time_delay_index = 0; // Reset index if it exceeds 99
+    }
+
+    last_check_time = current_time;
+
+
+    heap_remain = sizeof(xPortGetFreeHeapSize());
+    // Log or print the memory usage
+    // heap_usage[memory_usage_index] = (float)(total_memory - free_memory) / total_memory * 100.0f; // Calculate heap usage percentage
+    // if(memory_usage_index < 99) {
+    //   memory_usage_index++;
+    // }
   }
 }

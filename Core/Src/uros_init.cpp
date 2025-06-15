@@ -74,6 +74,64 @@ void uros_init(void) {
   }
 }
 
+void uros_agent_status_check(void) {
+  switch (status) {
+    case AGENT_WAITING:
+      handle_state_agent_waiting();
+      break;
+    case AGENT_AVAILABLE:
+      handle_state_agent_available();
+      break;
+    case AGENT_CONNECTED:
+      handle_state_agent_connected();
+      break;
+    case AGENT_TRYING:
+      handle_state_agent_trying();
+      break;
+    case AGENT_DISCONNECTED:
+      handle_state_agent_disconnected();
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_state_agent_waiting(void) {
+  status = (rmw_uros_ping_agent(100, 10) == RMW_RET_OK) ? AGENT_AVAILABLE : AGENT_WAITING;
+}
+void handle_state_agent_available(void) {
+  uros_create_entities();
+  status = AGENT_CONNECTED;
+}
+void handle_state_agent_connected(void) {
+  if(rmw_uros_ping_agent(20, 5) == RMW_RET_OK){
+    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+    ping_fail_count = 0; // Reset ping fail count
+  } else {
+    ping_fail_count++;
+    if(ping_fail_count >= MAX_PING_FAIL_COUNT){
+      status = AGENT_TRYING;
+    }
+  }
+}
+void handle_state_agent_trying(void) {
+  if(rmw_uros_ping_agent(50, 10) == RMW_RET_OK){
+    status = AGENT_CONNECTED;
+    ping_fail_count = 0; // Reset ping fail count
+  } else {
+    ping_fail_count++;
+    if(ping_fail_count >= MAX_PING_FAIL_COUNT){
+      status = AGENT_DISCONNECTED;
+      ping_fail_count = 0;
+    }
+  }
+}
+void handle_state_agent_disconnected(void) {
+  uros_destroy_entities();
+  status = AGENT_WAITING;
+}
+
+
 void uros_create_entities(void) {
   allocator = rcl_get_default_allocator();
 
@@ -117,7 +175,6 @@ void uros_create_entities(void) {
   rclc_executor_add_timer(&executor, &status_pub_timer); // Add timer to executor
   rclc_executor_add_timer(&executor, &start_pub_timer); // Add start message timer to executor
 }
-
 void uros_destroy_entities(void) {
   rmw_context_t* rmw_context = rcl_context_get_rmw_context(&support.context);
   (void) rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
@@ -140,76 +197,27 @@ void uros_destroy_entities(void) {
   rclc_support_fini(&support);
 }
 
-void uros_agent_status_check(void) {
-  memory_usage_check(); // Check memory usage
-
-  switch (status) {
-    case AGENT_WAITING:
-      status = (rmw_uros_ping_agent(100, 10) == RMW_RET_OK) ? AGENT_AVAILABLE : AGENT_WAITING;
-      // if(mission_type != mission_type_prev)
-      // {
-      //     mission_type_prev = mission_type;
-      //     mission_control();
-      // }
-      break;
-    case AGENT_AVAILABLE:
-      uros_create_entities();
-      status = AGENT_CONNECTED;
-      break;
-    case AGENT_CONNECTED:
-      if(rmw_uros_ping_agent(20, 5) == RMW_RET_OK){
-        rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
-        ping_fail_count = 0; // Reset ping fail count
-      } else {
-        ping_fail_count++;
-        if(ping_fail_count >= MAX_PING_FAIL_COUNT){
-            status = AGENT_TRYING;
-        }
-      }
-      break;
-    case AGENT_TRYING:
-      if(rmw_uros_ping_agent(50, 10) == RMW_RET_OK){
-          status = AGENT_CONNECTED;
-          ping_fail_count = 0; // Reset ping fail count
-      } else {
-          ping_fail_count++;
-          if(ping_fail_count >= MAX_PING_FAIL_COUNT){
-              status = AGENT_DISCONNECTED;
-              ping_fail_count = 0;
-          }
-      }
-      break;
-    case AGENT_DISCONNECTED:
-      uros_destroy_entities();
-      status = AGENT_WAITING;
-      break;
-    default:
-      break;
-  }
-}
-
 void mission_type_sub_cb(const void * msgin) {
   const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *) msgin;
   mission_type = msg->data;
 
-  if(mission_type != mission_type_prev)
-  {
-    mission_type_prev = mission_type;
-    mission_control();
-  }
+  do_mission(); // Call the function to handle the mission based on the received type
 }
-
 void status_pub_cb(rcl_timer_t * timer, int64_t last_call_time) {
     mission_status_msg.data = mission_status;
     rcl_publish(&mission_status_pub, &mission_status_msg, NULL);
 }
-
 void start_pub_cb(rcl_timer_t * timer, int64_t last_call_time) {
     start_msg.data = start_flag;
     rcl_publish(&start_pub, &start_msg, NULL);
 }
 
-// this function will create the task according to the mission type
+void do_mission(void) {
+  if (mission_type != mission_type_prev) {
+    mission_type_prev = mission_type;
+    mission_control();
+  }
+}
 void mission_control(void) {
   switch(mission_type) {
     case 1:
@@ -378,28 +386,5 @@ void mission_control(void) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == GPIO_PIN_10){ // Check if the interrupt is from PC10
     start_flag = true; // Set start_msg to true
-  }
-}
-
-void memory_usage_check(void) {
-  static uint32_t last_check_time = 0;
-  current_time = HAL_GetTick();
-  if (current_time - last_check_time >= 1000) { // Check every second
-    if(time_delay_index < 99) {
-      time_delay[time_delay_index] = current_time - last_check_time; // Store the time delay
-      time_delay_index++;
-    } else {
-      time_delay_index = 0; // Reset index if it exceeds 99
-    }
-
-    last_check_time = current_time;
-
-
-    heap_remain = sizeof(xPortGetFreeHeapSize());
-    // Log or print the memory usage
-    // heap_usage[memory_usage_index] = (float)(total_memory - free_memory) / total_memory * 100.0f; // Calculate heap usage percentage
-    // if(memory_usage_index < 99) {
-    //   memory_usage_index++;
-    // }
   }
 }

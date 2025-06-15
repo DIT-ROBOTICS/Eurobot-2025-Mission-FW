@@ -1,5 +1,4 @@
 # STM32CubeIDE specific
-.settings/
 .metadata/
 [Dd]ebug/
 [Rr]elease/
@@ -7,9 +6,6 @@ Drivers/
 Middlewares/
 Startup/
 .launch
-.project
-.mxproject
-.cproject
 
 # Build files
 *.o

@@ -51,18 +51,27 @@ typedef enum {
 } agent_status_t;
 
 void uros_init(void);
+
+void uros_agent_status_check(void);
+
+void handle_state_agent_waiting(void);
+void handle_state_agent_available(void);
+void handle_state_agent_connected(void);
+void handle_state_agent_trying(void);
+void handle_state_agent_disconnected(void);
+
 void uros_create_entities(void);
 void uros_destroy_entities(void);
-void uros_agent_status_check(void);
 
 void mission_type_sub_cb(const void * msgin);
 void status_pub_cb(rcl_timer_t * timer, int64_t last_call_time);
 void start_pub_cb(rcl_timer_t * timer, int64_t last_call_time);
+
+void do_mission(void);
 void mission_control(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
-void memory_usage_check(void);
 
 #ifdef __cplusplus
 }

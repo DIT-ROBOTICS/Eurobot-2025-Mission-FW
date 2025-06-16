@@ -7,6 +7,7 @@ This repository contains the firmware for the Eurobot 2025 mission control syste
 - Ubuntu Operating System
 - STM32CubeIDE (latest version recommended)
 - Git
+- STM32F446RET6 Board
 
 ## Setup Instructions
 

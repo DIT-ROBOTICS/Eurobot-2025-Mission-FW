@@ -105,13 +105,19 @@ void handle_state_agent_available(void) {
 }
 void handle_state_agent_connected(void) {
   if(rmw_uros_ping_agent(20, 5) == RMW_RET_OK){
-    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+    rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
     ping_fail_count = 0; // Reset ping fail count
   } else {
     ping_fail_count++;
     if(ping_fail_count >= MAX_PING_FAIL_COUNT){
       status = AGENT_TRYING;
     }
+  }
+  current_time = HAL_GetTick();
+  static uint32_t prev_time = 0;
+  if (current_time - prev_time >= 100) {  // Every 100ms
+    rmw_uros_sync_session(100);
+    prev_time = current_time;
   }
 }
 void handle_state_agent_trying(void) {
@@ -150,7 +156,10 @@ void uros_create_entities(void) {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "mission_status");
-    mission_status_msg.data = 0;
+  mission_status_msg.data = 0;
+  rmw_uros_set_publisher_session_timeout( // Set session timeout for publisher
+    rcl_publisher_get_rmw_handle(&mission_status_pub),
+    10);
 
   rclc_publisher_init_default( // Initialize publisher for start message
     &start_pub,
@@ -158,6 +167,9 @@ void uros_create_entities(void) {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Bool),
     "/robot/startup/plug");
   start_msg.data = 0;
+  rmw_uros_set_publisher_session_timeout( // Set session timeout for start publisher
+    rcl_publisher_get_rmw_handle(&start_pub),
+    10);
 
   rclc_subscription_init_default( // Initialize subscriber for mission type
     &mission_type_sub,
@@ -165,7 +177,7 @@ void uros_create_entities(void) {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "mission_type");
   mission_type_msg.data = 0;
-  
+
   rclc_timer_init_default(&status_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), status_pub_cb); // Initialize status message timer
   rclc_timer_init_default(&start_pub_timer, &support, RCL_MS_TO_NS(1000/FREQUENCY), start_pub_cb); // Initialize start message timer
   
